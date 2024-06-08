@@ -18,7 +18,6 @@ def create_sample_64(n):
     
     for i in range(n):
         path = random.choice(os.listdir('../data/src1/64/notwaldo'))
-        print(path)
         img = cv2.imread(f'../data/src1/64/notwaldo/{path}')
         
         if img.shape[2] == 3:
@@ -45,7 +44,7 @@ def create_sample_64(n):
     # save images
     
     for i, img in enumerate(imgs):
-        cv2.imwrite(f'../data/experimental/{i}.png', img)
+        cv2.imwrite(f'../data/selfmade/waldo/64_{i}.png', img)
         
     return imgs
     
@@ -67,7 +66,6 @@ def create_sample_128(n):
     
     for i in range(n):
         path = random.choice(os.listdir('../data/src1/128/notwaldo'))
-        print(path)
         img = cv2.imread(f'../data/src1/128/notwaldo/{path}')
         
         if img.shape[2] == 3:
@@ -94,7 +92,7 @@ def create_sample_128(n):
     # save images
     
     for i, img in enumerate(imgs):
-        cv2.imwrite(f'../data/experimental/{i}.png', img)
+        cv2.imwrite(f'../data/selfmade/waldo/128_{i}.png', img)
         
     return imgs
 
@@ -115,7 +113,6 @@ def create_sample_256(n):
     
     for i in range(n):
         path = random.choice(os.listdir('../data/src1/256/notwaldo'))
-        print(path)
         img = cv2.imread(f'../data/src1/256/notwaldo/{path}')
         
         if img.shape[2] == 3:
@@ -142,7 +139,7 @@ def create_sample_256(n):
     # save images
     
     for i, img in enumerate(imgs):
-        cv2.imwrite(f'../data/experimental/{i}.png', img)
+        cv2.imwrite(f'../data/selfmade/waldo/256_{i}.png', img)
         
     return imgs
 
