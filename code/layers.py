@@ -51,9 +51,11 @@ class ConvLayer(Layer):
     
         
 class PoolLayer(Layer):
-    def __init__(self, pool_size, stride):
+    def __init__(self, pool_size, stride, input_shape, pool_type='max'):
         self.pool_size = pool_size
         self.stride = stride
+        self.input_shape = input_shape
+        self.pool_type = pool_type
     
     def forward(self, X):
         pass
@@ -67,13 +69,38 @@ class FlattenLayer(Layer):
     
     def backward(self, delta):
         pass
-    
+            
 class DenseLayer(Layer):
-    def __init__(self, num_neurons):
-        self.num_neurons = num_neurons
+    def __init__(self, units, input_shape, activation='relu'):
+        self.units = units
+        self.input_shape = input_shape
+        self.activation = activation
+
+        self.weights = np.random.randn(input_shape[1], units) - 0.5
+        self.biases = np.random.randn(units) - 0.5
     
+    def activate(self, X):
+        if self.activation == 'relu':
+            return np.maximum(X, 0)
+        elif self.activation == 'sigmoid':
+            return 1 / (1 + np.exp(-X))
+        elif self.activation == 'tanh':
+            return np.tanh(X)
+        else:
+            return X
+
     def forward(self, X):
-        pass
-    
+        self.input = X
+        
+        self.output = np.dot(X, self.weights) + self.biases
+        
+        return self.activate(self.output)
+        
     def backward(self, delta):
-        pass
+        input_error = np.dot(delta, self.weights.T)
+        weights_error = np.dot(self.input.T, delta)
+        
+        self.weights -= self.learning_rate * weights_error
+        self.biases -= self.learning_rate * delta
+        
+        return input_error
