@@ -118,7 +118,8 @@ def create_sample_256(n):
         if img.shape[2] == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
         
-        Waldo = random.choice(Waldos)
+        # Waldo = random.choice(Waldos)
+        Waldo = Waldos[0]
         
         x = random.randint(0, 256 - Waldo.shape[1])
         y = random.randint(0, 256 - Waldo.shape[0])
@@ -143,10 +144,13 @@ def create_sample_256(n):
         
     return imgs
 
-def create_sample(size, n):
+def create_sample(size, n, remove_old=True):
     """
     Create a sample of n images of size size x size
     """
+    if remove_old:
+        for file in os.listdir('../data/selfmade/waldo'):
+            os.remove(f'../data/selfmade/waldo/{file}')
     if size == 64:
         create_sample_64(n)
     elif size == 128:
