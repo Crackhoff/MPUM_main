@@ -63,6 +63,7 @@ class ConvLayer(Layer):
             for j in range(self.num_channels):
                 # print(self.input[:, :, j].shape, self.kernels[i].shape)
                 self.output[i] += signal.correlate2d(self.input[:, :, j], self.kernels[i, j], mode='valid')
+        self.derivative = self.activate_derivative(self.output)
         return self.activate(self.output)
     
     def activate(self, X):
@@ -74,8 +75,23 @@ class ConvLayer(Layer):
             return np.tanh(X)
         else:
             return X
+        
+    def activate_derivative(self, X):
+        '''
+        Derivative of the activation function
+        X: input to the activation function
+        '''
+        if self.activation == 'relu':
+            return np.where(X > 0, 1, 0)
+        elif self.activation == 'sigmoid':
+            return X * (1 - X)
+        elif self.activation == 'tanh':
+            return 1 - X ** 2
+        else:
+            return X
 
     def backward(self, output_grad):
+        output_grad = output_grad * self.derivative
         # output_grad.shape: (K, H-KS+1, W+KS+1)
         kernels_grad = np.zeros(self.kernels_shape)  # (K, C, KS, KS)
         input_grad = np.zeros(self.input_shape)  # (H, W, C)
@@ -225,15 +241,31 @@ class DenseLayer(Layer):
             return np.tanh(X)
         else:
             return X
+        
+                
+    def activate_derivative(self, X):
+        '''
+        Derivative of the activation function
+        X: input to the activation function
+        '''
+        if self.activation == 'relu':
+            return np.where(X > 0, 1, 0)
+        elif self.activation == 'sigmoid':
+            return X * (1 - X)
+        elif self.activation == 'tanh':
+            return 1 - X ** 2
+        else:
+            return X
 
     def forward(self, X):
         self.input = X
 
         self.output = np.dot(X, self.weights) + self.biases
-
+        self.derivative = self.activate_derivative(self.output)
         return self.activate(self.output)
 
     def backward(self, output_grad):
+        output_grad = output_grad * self.derivative
         input_error = np.dot(output_grad, self.weights.T)
         weights_error = np.dot(self.input.T, output_grad)
 
