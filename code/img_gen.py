@@ -157,6 +157,8 @@ def create_sample(size, n, remove_old=True):
         create_sample_128(n)
     elif size == 256:
         create_sample_256(n)
+    else:
+        print('Size not supported')
         
 
 if __name__ == '__main__':

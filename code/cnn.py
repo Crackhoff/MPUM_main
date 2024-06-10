@@ -33,6 +33,16 @@ class CNN:
                 
             if self.verbose:
                 print("Epoch", epoch, "Error", self.error[-1])
+                
+    def predict(self, X):
+        self._forward(X)
+        
+        return self.layers[-1].output
+
+    def evaluate(self, X, y):
+        
+        output = self.predict(X) 
+        return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
         
     def _forward(self, X):
         self.layers[0].forward(X)
