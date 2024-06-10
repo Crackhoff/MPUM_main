@@ -139,14 +139,7 @@ class MaxPoolLayer(Layer):
     def backward(self, delta):
         # implement backpropagation for max pooling using the saved indices
         
-        # delta is in the form (x.output, y.output, channel)
-        # we want to return delta in the form (x.input, y.input, channel)
-                
-        # for each pool, we want to split the delta into the pool size
-        
         delta_out = np.zeros(self.input_shape)
-        
-        # duplicate every delta value pool_size[0] times along axis 1
         
         delta = np.repeat(delta, self.pool_size[0], axis=0)
         
@@ -180,21 +173,15 @@ class MeanPoolLayer(Layer):
         
                         
     
-    def backward(self, delta):
+    def backward(self, output_grad):
         # implement backpropagation for mean pooling
-        
-        # delta is in the form (batch, x.output, y.output, channel)
-        # reshape delta to (batch, x.output, y.output, 1)
-        # repeat delta pool_size[0] times along axis 3
-        # repeat delta pool_size[1] times along axis 4
 
-        delta = np.repeat(delta, self.pool_size[0], axis=0)
-        delta = np.repeat(delta, self.pool_size[1], axis=1)
+        output_grad = np.repeat(output_grad, self.pool_size[0], axis=0)
+        output_grad = np.repeat(output_grad, self.pool_size[1], axis=1)
         
-        # divide delta by the pool size
-        delta = delta / (self.pool_size[0] * self.pool_size[1])
+        output_grad = output_grad / (self.pool_size[0] * self.pool_size[1])
 
-        return delta
+        return output_grad
     
 class FlattenLayer(Layer):
     def __init__(self, input_shape):
@@ -207,15 +194,14 @@ class FlattenLayer(Layer):
         
         return self.output
         
-    def backward(self, delta):
-        return delta.reshape(self.input_shape)
+    def backward(self, output_grad):
+        return output_grad.reshape(self.input_shape)
 
 class DenseLayer(Layer):
-    def __init__(self, units, input_shape, activation='relu', learning_rate=0.001):
+    def __init__(self, units, input_shape, activation='relu'):
         self.units = units
         self.input_shape = input_shape
         self.activation = activation
-        self.learning_rate = learning_rate
         
         self.weights = np.random.randn(input_shape[1], units) - 0.5
         self.biases = np.random.randn(units) - 0.5
@@ -237,11 +223,11 @@ class DenseLayer(Layer):
 
         return self.activate(self.output)
 
-    def backward(self, delta):
-        input_error = np.dot(delta, self.weights.T)
-        weights_error = np.dot(self.input.T, delta)
+    def backward(self, output_grad):
+        input_error = np.dot(output_grad, self.weights.T)
+        weights_error = np.dot(self.input.T, output_grad)
 
-        self.weights -= self.learning_rate * weights_error
-        self.biases -= self.learning_rate * delta
+        self.weights_grad = weights_error
+        self.biases_grad = output_grad
 
         return input_error
