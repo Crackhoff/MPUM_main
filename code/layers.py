@@ -28,12 +28,12 @@ class Layer:
         pass
 
     @property
-    def weights(self):
-        pass
+    def weight_grad(self):
+        return 0
 
     @property
-    def bias(self):
-        pass
+    def bias_grad(self):
+        return 0
 
     def activate(self, X):
         if self.activation == 'relu':
@@ -74,7 +74,8 @@ class ConvLayer(Layer):
         self.num_kernels = num_kernels  # K
         self.input_shape = input_shape  # (B, H, W, C)
         self.num_channels = channels  # C
-        self.output_shape = (num_batches, num_kernels, height - kernel_size + 1, width - kernel_size + 1)  # (B, K, H-KS+1, W+KS+1)
+        self.output_shape = (
+        num_batches, num_kernels, height - kernel_size + 1, width - kernel_size + 1)  # (B, K, H-KS+1, W+KS+1)
 
         self.kernels_shape = (num_kernels, channels, kernel_size, kernel_size)  # (K, C, KS, KS)
         self.kernels = np.random.randn(*self.kernels_shape)  # (K, C, KS, KS)
@@ -120,11 +121,11 @@ class ConvLayer(Layer):
 
     @property
     def weights(self):
-        return self.kernels
+        return self.kernels_grad
 
     @property
     def bias(self):
-        return self.biases
+        return self.bias_grad
 
 
 class PoolLayer(Layer):
@@ -263,3 +264,15 @@ class DenseLayer(Layer):
         self.biases_grad = output_grad
 
         return input_error
+
+    @property
+    def weights_grad(self):
+        return self.weights_grad
+
+    @property
+    def bias_grad(self):
+        return self.biases_grad
+
+    def update(self, w_grad, b_grad):
+        self.weights -= w_grad
+        self.biases -= b_grad
