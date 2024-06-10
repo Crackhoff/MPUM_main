@@ -36,7 +36,7 @@ class Layer:
         pass
 
 class ConvLayer(Layer):
-    def __init__(self, num_kernels: int, kernel_size: int, input_shape: tuple, learning_rate=0.01):
+    def __init__(self, num_kernels: int, kernel_size: int, input_shape: tuple, activation='relu'):
         """
         CNN - layer
         Based on: https://www.youtube.com/watch?v=Lakz2MoHy6o
@@ -54,7 +54,7 @@ class ConvLayer(Layer):
         self.kernels_grad = np.zeros(self.kernels_shape)
         self.biases_grad = np.zeros(self.output_shape)
 
-        self.learning_rate = learning_rate
+        self.activation = activation
 
     def forward(self, X):
         self.input = X  # (H, W, C)
@@ -63,7 +63,17 @@ class ConvLayer(Layer):
             for j in range(self.num_channels):
                 # print(self.input[:, :, j].shape, self.kernels[i].shape)
                 self.output[i] += signal.correlate2d(self.input[:, :, j], self.kernels[i, j], mode='valid')
-        return self.output
+        return self.activate(self.output)
+    
+    def activate(self, X):
+        if self.activation == 'relu':
+            return np.maximum(X, 0)
+        elif self.activation == 'sigmoid':
+            return 1 / (1 + np.exp(-X))
+        elif self.activation == 'tanh':
+            return np.tanh(X)
+        else:
+            return X
 
     def backward(self, output_grad):
         # output_grad.shape: (K, H-KS+1, W+KS+1)
