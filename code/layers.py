@@ -7,7 +7,6 @@ class Layer:
         self.activation = None
         self.delta = None
         self.id = None
-
         self.input_shape = input_shape
 
     def set_id(self, id):
@@ -25,10 +24,20 @@ class Layer:
     def get_output(self):
         return self.output
 
+    def update(self, w_grad, b_grad):
+        pass
+
+    @property
+    def weights(self):
+        pass
+
+    @property
+    def bias(self):
+        pass
 
 # https://www.youtube.com/watch?v=Lakz2MoHy6o
 class ConvLayer(Layer):
-    def __init__(self, num_kernels: int, kernel_size: int, input_shape: tuple, learning_rate=0.001):
+    def __init__(self, num_kernels: int, kernel_size: int, input_shape: tuple, learning_rate=0.01):
         """
         CNN - layer
         Based on: https://www.youtube.com/watch?v=Lakz2MoHy6o
@@ -42,6 +51,9 @@ class ConvLayer(Layer):
         self.kernels_shape = (num_kernels, channels, kernel_size, kernel_size)  # (K, C, KS, KS)
         self.kernels = np.random.randn(*self.kernels_shape)  # (K, C, KS, KS)
         self.biases = np.random.randn(*self.output_shape)  # (K, H, W)
+
+        self.kernels_grad = np.zeros(self.kernels_shape)
+        self.biases_grad = np.zeros(self.output_shape)
 
         self.learning_rate = learning_rate
 
@@ -64,10 +76,23 @@ class ConvLayer(Layer):
                 kernels_grad[i, j] += signal.correlate2d(self.input[:, :, j], output_grad[i], 'valid')
                 input_grad[:, :, j] += signal.convolve2d(output_grad[i], self.kernels[i, j], 'full')
 
-        self.kernels -= self.learning_rate * kernels_grad
-        self.biases -= self.learning_rate * output_grad
+        self.kernels_grad = kernels_grad
+        self.biases_grad = output_grad
+        # self.kernels -= self.learning_rate * kernels_grad
+        # self.biases -= self.learning_rate * output_grad
         return input_grad
 
+    def update(self, w_grad, b_grad):
+        self.kernels -= w_grad
+        self.biases -= b_grad
+
+    @property
+    def weights(self):
+        return self.kernels
+
+    @property
+    def bias(self):
+        return self.biases
 
 class PoolLayer(Layer):
     def __init__(self, pool_size, stride, input_shape, pool_type='max'):
