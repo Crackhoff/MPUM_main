@@ -5,6 +5,7 @@ from losses import *
 
 class NeuralNetwork:
     def __init__(self, loss='mse'):
+        self.optimizer = None
         self.layers = []
 
         if loss == 'binary_crossentropy':
@@ -20,12 +21,14 @@ class NeuralNetwork:
         # layer.set_id(self.next_layer)
         # self.next_layer += 1
 
-    def train(self, X, y, learning_rate=0.01, epochs=10, batch_size=1, verbose=True):
-        batch_learning_rate = learning_rate / batch_size
+    def train(self, X, y, learning_rate=0.01, epochs=10, batch_size=1, optimizer='adam', verbose=True):
+        if optimizer == 'grad_descent':
+            self.optimizer = SimpleOptimizer(self, learning_rate)
+        else:
+            self.optimizer = AdamOptimizer(self, learning_rate)
 
+        batch_learning_rate = learning_rate / batch_size
         self.error = []
-        # self.optimizer = SimpleOptimizer(self, learning_rate=learning_rate)  # Or batch_lr?
-        self.optimizer = AdamOptimizer(self, learning_rate=learning_rate)
 
         for epoch in range(epochs):
             error = 0
@@ -35,7 +38,6 @@ class NeuralNetwork:
 
                 y_pred = self._forward(X_batch)
                 error += self.loss(y_batch, y_pred)
-                # print("loss", error)
 
                 grad = self.loss_d(y_batch, y_pred)
                 self._backward(grad)

@@ -35,6 +35,14 @@ class Layer:
     def bias_grad(self):
         return 0
 
+    @property
+    def weights_shape(self):
+        raise NotImplemented
+
+    @property
+    def bias_shape(self):
+        raise NotImplemented
+
     def activate(self, X):
         if self.activation == 'relu':
             return np.maximum(X, 0)
@@ -136,6 +144,14 @@ class ConvLayer(Layer):
     def __str__(self) -> str:
         return f'ConvLayer: {self.input_shape} -> {self.output_shape}'
 
+    @property
+    def weights_shape(self):
+        return self.kernels_shape
+
+    @property
+    def bias_shape(self):
+        return self.output_shape
+
 
 class PoolLayer(Layer):
     def __init__(self, num_filters: int, filter_size: tuple, stride, padding, input_shape):
@@ -208,6 +224,31 @@ class MaxPoolLayer(Layer):
     def __str__(self) -> str:
         return f'MaxPoolLayer: {self.input_shape} -> {self.output_shape}'
 
+    @property
+    def weights_grad(self):
+        # return self._weights_grad
+        raise NotImplementedError
+
+    @property
+    def bias_grad(self):
+        # return self._biases_grad
+        raise NotImplementedError
+
+    def update(self, w_grad, b_grad):
+        # self.weights -= w_grad
+        # self.biases -= b_grad
+        raise NotImplementedError
+
+    @property
+    def weights_shape(self):
+        # return self.weights.shape
+        raise NotImplemented
+
+    @property
+    def bias_shape(self):
+        # return self.biases.shape
+        raise NotImplemented
+
 
 class MeanPoolLayer(Layer):
     def __init__(self, input_shape, pool_size, stride=None):
@@ -246,6 +287,31 @@ class MeanPoolLayer(Layer):
     def __str__(self) -> str:
         return f'MeanPoolLayer: {self.input_shape} -> {self.output_shape}'
 
+    @property
+    def weights_grad(self):
+        # return self._weights_grad
+        raise NotImplementedError
+
+    @property
+    def bias_grad(self):
+        # return self._biases_grad
+        raise NotImplementedError
+
+    def update(self, w_grad, b_grad):
+        # self.weights -= w_grad
+        # self.biases -= b_grad
+        raise NotImplementedError
+
+    @property
+    def weights_shape(self):
+        # return self.weights.shape
+        raise NotImplemented
+
+    @property
+    def bias_shape(self):
+        # return self.biases.shape
+        raise NotImplemented
+
 
 class FlattenLayer(Layer):
     def __init__(self, input_shape):
@@ -262,6 +328,14 @@ class FlattenLayer(Layer):
     
     def __str__(self) -> str:
         return f'FlattenLayer: {self.input_shape} -> {self.output_shape}'
+
+    @property
+    def weights_shape(self):
+        return ()
+
+    @property
+    def bias_shape(self):
+        return ()
 
 
 class DenseLayer(Layer):
@@ -306,7 +380,14 @@ class DenseLayer(Layer):
     def update(self, w_grad, b_grad):
         self.weights -= w_grad
         self.biases -= b_grad
-        # print('update: ', w_grad, b_grad)
-        
+
     def __str__(self) -> str:
         return f'DenseLayer: {self.input_size} -> {self.output_size}'
+
+    @property
+    def weights_shape(self):
+        return self.weights.shape
+
+    @property
+    def bias_shape(self):
+        return self.biases.shape
