@@ -53,7 +53,7 @@ class Layer:
         if self.activation == 'relu':
             return np.where(X > 0, 1, 0)
         elif self.activation == 'sigmoid':
-            sX = 1 / 1 + np.exp(-X)
+            sX = 1 / (1 + np.exp(-X))
             return sX * (1 - sX)
         elif self.activation == 'tanh':
             tanhX = np.tanh(X)
