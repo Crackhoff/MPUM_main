@@ -3,7 +3,7 @@ from optimizer import *
 from losses import *
 
 
-class NuralNetwork:
+class NeuralNetwork:
     def __init__(self, loss='mse'):
         self.layers = []
 
@@ -34,7 +34,7 @@ class NuralNetwork:
 
                 y_pred = self._forward(X_batch)
                 error += self.loss(y_batch, y_pred)
-                print("loss", error)
+                # print("loss", error)
 
                 grad = self.loss_d(y_batch, y_pred)
                 self._backward(grad)
