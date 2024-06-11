@@ -144,16 +144,15 @@ class PoolLayer(Layer):
 
 
 class MaxPoolLayer(Layer):
-    def __init__(self, pool_size, input_shape, stride=None, pool_type='max'):
+    def __init__(self, input_shape, pool_size, stride=None):
         self.pool_size = pool_size
         if stride is None:
             self.stride = pool_size
         else:
             self.stride = stride
         self.input_shape = input_shape
-        self.pool_type = pool_type
         self.output_shape = (input_shape[0], (input_shape[1] - self.pool_size[0]) // self.stride[0] + 1,
-                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1, input_shape[3])
+                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1) # (C, H, W)
 
     def _compress_indices(self):
         return np.mean(self.indices, axis=0)
@@ -161,69 +160,78 @@ class MaxPoolLayer(Layer):
     def forward(self, X):
         # implement max pooling and save the indices of the max values
         # print(X.shape)
-        self.output = np.zeros(self.output_shape)
+        (batch, channel, x, y) = X.shape
+        self.output = np.zeros((batch, *self.output_shape))
 
-        (batch, x, y, channel) = X.shape
-
-        self.indices = np.zeros(self.input_shape)
-
-        for i in range(0, x - self.pool_size[0] + 1, self.stride[0]):
-            for j in range(0, y - self.pool_size[1] + 1, self.stride[1]):
-                for c in range(channel):
-                    self.output[:, i // self.stride[0], j // self.stride[1], c] = np.max(
-                        X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c], axis=(1, 2))
-                    self.indices[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] = np.where(
-                        X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] == self.output[:, i // self.stride[0],
-                                                                                     j // self.stride[1], c].reshape(-1,
-                                                                                                                     1,
-                                                                                                                     1),
-                        1, 0)
+        
+        self.indices = np.zeros(X.shape)
+        for b in range(batch):
+            for c in range(channel):
+                for i in range(0, x - self.pool_size[0] + 1, self.stride[0]):
+                    for j in range(0, y - self.pool_size[1] + 1, self.stride[1]):
+                        self.output[b, c, i // self.stride[0], j // self.stride[1]] = np.max(
+                            X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]])
+                        self.indices[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] = np.where(
+                            X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] == self.output[b, c, i // self.stride[0],
+                                                                                       j // self.stride[1],
+                                                                                       ].reshape(-1, 1, 1), 1, 0)
+        
+        # for i in range(0, x - self.pool_size[0] + 1, self.stride[0]):
+        #     for j in range(0, y - self.pool_size[1] + 1, self.stride[1]):
+        #         for c in range(channel):
+        #             self.output[:, i // self.stride[0], j // self.stride[1], c] = np.max(
+        #                 X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c], axis=(1, 2))
+        #             self.indices[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] = np.where(
+        #                 X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] == self.output[:, i // self.stride[0],
+        #                                                                              j // self.stride[1], c].reshape(-1,
+        #                                                                                                              1,
+        #                                                                                                              1),
+        #                 1, 0)
 
         self.indices = self._compress_indices()
-        # print(self.indices.shape)
 
         return self.output
 
-    def backward(self, delta):
+    def backward(self, output_grad):
         # implement backpropagation for max pooling using the saved indices
-        delta = np.repeat(delta, self.pool_size[0], axis=0)
+        output_grad = np.repeat(output_grad, self.pool_size[0], axis=1)
 
-        delta = np.repeat(delta, self.pool_size[1], axis=1)
+        output_grad = np.repeat(output_grad, self.pool_size[1], axis=2)
 
-        delta_out = delta * self.indices
+        output_grad = output_grad * self.indices
 
-        return delta_out
+        return output_grad
 
 
 class MeanPoolLayer(Layer):
-    def __init__(self, pool_size, input_shape, stride=None, pool_type='max'):
+    def __init__(self, input_shape, pool_size, stride=None):
         self.pool_size = pool_size
         if stride is None:
             self.stride = pool_size
         else:
             self.stride = stride
         self.input_shape = input_shape
-        self.pool_type = pool_type
-
         self.output_shape = (input_shape[0], (input_shape[1] - self.pool_size[0]) // self.stride[0] + 1,
-                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1, input_shape[3])
+                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1) # (C, H, W)
 
     def forward(self, X):
         # implement mean pooling
         self.output = np.zeros(self.output_shape)
+        
+        batches_num = X.shape[0]
 
-        reshaped_input = X.reshape(X.shape[0], X.shape[1] // self.pool_size[0], self.pool_size[0],
-                                   X.shape[2] // self.pool_size[1], self.pool_size[1], X.shape[3])
-        output = reshaped_input.mean(axis=(2, 4))
-        reshaped_input = reshaped_input.transpose(0, 1, 3, 5, 2, 4)
+        reshaped_input = X.reshape(X.shape[0], X.shape[1], X.shape[2] // self.pool_size[0], self.pool_size[0],
+                                   X.shape[3] // self.pool_size[1], self.pool_size[1])
+        output = reshaped_input.mean(axis=(3, 5))
+        
         # self.indices = each neuron equal weight
-        return self.activate(output)
+        return output
 
     def backward(self, output_grad):
         # implement backpropagation for mean pooling
-
-        output_grad = np.repeat(output_grad, self.pool_size[0], axis=0)
-        output_grad = np.repeat(output_grad, self.pool_size[1], axis=1)
+        # 
+        output_grad = np.repeat(output_grad, self.pool_size[0], axis=1)
+        output_grad = np.repeat(output_grad, self.pool_size[1], axis=2)
 
         output_grad = output_grad / (self.pool_size[0] * self.pool_size[1])
 

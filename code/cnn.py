@@ -24,7 +24,8 @@ class NeuralNetwork:
         batch_learning_rate = learning_rate / batch_size
 
         self.error = []
-        self.optimizer = SimpleOptimizer(self, learning_rate=learning_rate)  # Or batch_lr?
+        # self.optimizer = SimpleOptimizer(self, learning_rate=learning_rate)  # Or batch_lr?
+        self.optimizer = AdamOptimizer(self, learning_rate=learning_rate)
 
         for epoch in range(epochs):
             error = 0
