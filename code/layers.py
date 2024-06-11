@@ -47,7 +47,15 @@ class Layer:
         if self.activation == 'relu':
             return np.maximum(X, 0)
         elif self.activation == 'sigmoid':
-            return 1 / (1 + np.exp(-X))
+            pos = np.where(X > 0)
+            neg = np.where(X <= 0)
+            res = np.zeros(X.shape)
+            res[pos] = 1 / (1 + np.exp(-X[pos]))
+            res[neg] = np.exp(X[neg]) / (1 + np.exp(X[neg]))
+            return res
+        # elif self.activation == 'softmax':
+        #     exps = np.exp(X - np.max(X))
+        #     return exps / np.sum(exps)
         elif self.activation == 'tanh':
             return np.tanh(X)
         else:
@@ -61,7 +69,7 @@ class Layer:
         if self.activation == 'relu':
             return np.where(X > 0, 1, 0)
         elif self.activation == 'sigmoid':
-            sX = 1 / (1 + np.exp(-X))
+            sX = self.activate(X)
             return sX * (1 - sX)
         elif self.activation == 'tanh':
             tanhX = np.tanh(X)
@@ -94,6 +102,7 @@ class ConvLayer(Layer):
 
     def forward(self, X):
         batches_num = X.shape[0]
+        # print("XXX",X.shape)
         self.input = X  # (H, W, C)
         self.output = np.ndarray((batches_num, *self.output_shape))
         for b in range(batches_num):
@@ -108,6 +117,7 @@ class ConvLayer(Layer):
         return self.activate(self.output)
 
     def backward(self, output_grad):
+        # print(output_grad.shape)
         batches_num = self.input.shape[0]
         output_grad = output_grad * np.mean(self.derivative, axis=0)
         # print(output_grad.shape)
@@ -281,7 +291,7 @@ class DenseLayer(Layer):
         self.output_size = output_size
         self.activation = activation
 
-        self.weights = np.random.randn(output_size, input_size)
+        self.weights = np.random.randn(output_size, self.input_size)
         self.biases = np.random.randn(output_size, 1)
 
         self._weights_grad = None
