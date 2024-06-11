@@ -60,6 +60,7 @@ class NeuralNetwork:
 
     def _forward(self, X):
         for l in self.layers:
+            # print(l, X.shape)
             X = l.forward(X)
         return X
 

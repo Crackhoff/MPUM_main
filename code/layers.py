@@ -3,7 +3,7 @@ from scipy import signal
 
 
 class Layer:
-    def __init__(self, input_shape):
+    def __init__(self, input_shape: tuple):
         self.activation = None
         self.delta = None
         self.id = None
@@ -37,11 +37,11 @@ class Layer:
 
     @property
     def weights_shape(self):
-        raise NotImplemented
+        return ()
 
     @property
     def bias_shape(self):
-        raise NotImplemented
+        return ()
 
     def activate(self, X):
         if self.activation == 'relu':
@@ -151,19 +151,13 @@ class ConvLayer(Layer):
     @property
     def bias_shape(self):
         return self.output_shape
-
-
-class PoolLayer(Layer):
-    def __init__(self, num_filters: int, filter_size: tuple, stride, padding, input_shape):
-        self.num_filters = num_filters
-        self.filter_size = filter_size
-        self.stride = stride
-        self.padding = padding
-        self.input_shape = input_shape
+    
+    def __str__(self) -> str:
+        return f'ConvLayer: {self.input_shape} -> {self.output_shape} with {self.num_kernels} kernels of size {self.kernels_shape[0]}x{self.kernels_shape[1]} \n Activation: {self.activation}'
 
 
 class MaxPoolLayer(Layer):
-    def __init__(self, input_shape, pool_size, stride=None):
+    def __init__(self, input_shape: tuple, pool_size: tuple, stride=None):
         self.pool_size = pool_size
         if stride is None:
             self.stride = pool_size
@@ -180,6 +174,7 @@ class MaxPoolLayer(Layer):
         # implement max pooling and save the indices of the max values
         # print(X.shape)
         (batch, channel, x, y) = X.shape
+        # add padding if needed
         self.output = np.zeros((batch, *self.output_shape))
 
         
@@ -194,18 +189,6 @@ class MaxPoolLayer(Layer):
                             X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] == self.output[b, c, i // self.stride[0],
                                                                                        j // self.stride[1],
                                                                                        ].reshape(-1, 1, 1), 1, 0)
-        
-        # for i in range(0, x - self.pool_size[0] + 1, self.stride[0]):
-        #     for j in range(0, y - self.pool_size[1] + 1, self.stride[1]):
-        #         for c in range(channel):
-        #             self.output[:, i // self.stride[0], j // self.stride[1], c] = np.max(
-        #                 X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c], axis=(1, 2))
-        #             self.indices[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] = np.where(
-        #                 X[:, i:i + self.pool_size[0], j:j + self.pool_size[1], c] == self.output[:, i // self.stride[0],
-        #                                                                              j // self.stride[1], c].reshape(-1,
-        #                                                                                                              1,
-        #                                                                                                              1),
-        #                 1, 0)
 
         self.indices = self._compress_indices()
 
@@ -217,41 +200,22 @@ class MaxPoolLayer(Layer):
 
         output_grad = np.repeat(output_grad, self.pool_size[1], axis=2)
 
+        if output_grad.shape[1] != self.input_shape[1]:
+            output_grad = np.pad(output_grad, ((0, 0), (0, self.input_shape[1] - output_grad.shape[1]), (0, 0)))
+        
+        if output_grad.shape[2] != self.input_shape[2]:
+            output_grad = np.pad(output_grad, ((0, 0), (0, 0), (0, self.input_shape[2] - output_grad.shape[2])))
+    
         output_grad = output_grad * self.indices
 
         return output_grad
     
     def __str__(self) -> str:
-        return f'MaxPoolLayer: {self.input_shape} -> {self.output_shape}'
-
-    @property
-    def weights_grad(self):
-        # return self._weights_grad
-        raise NotImplementedError
-
-    @property
-    def bias_grad(self):
-        # return self._biases_grad
-        raise NotImplementedError
-
-    def update(self, w_grad, b_grad):
-        # self.weights -= w_grad
-        # self.biases -= b_grad
-        raise NotImplementedError
-
-    @property
-    def weights_shape(self):
-        # return self.weights.shape
-        raise NotImplemented
-
-    @property
-    def bias_shape(self):
-        # return self.biases.shape
-        raise NotImplemented
+        return f'MaxPoolLayer: {self.input_shape} -> {self.output_shape} with pool size {self.pool_size}'
 
 
 class MeanPoolLayer(Layer):
-    def __init__(self, input_shape, pool_size, stride=None):
+    def __init__(self, input_shape:tuple, pool_size: tuple, stride=None):
         self.pool_size = pool_size
         if stride is None:
             self.stride = pool_size
@@ -282,39 +246,20 @@ class MeanPoolLayer(Layer):
 
         output_grad = output_grad / (self.pool_size[0] * self.pool_size[1])
 
+        if output_grad.shape[1] != self.input_shape[1]:
+            output_grad = np.pad(output_grad, ((0, 0), (0, self.input_shape[1] - output_grad.shape[1]), (0, 0)))
+        
+        if output_grad.shape[2] != self.input_shape[2]:
+            output_grad = np.pad(output_grad, ((0, 0), (0, 0), (0, self.input_shape[2] - output_grad.shape[2])))
+    
         return output_grad
     
     def __str__(self) -> str:
-        return f'MeanPoolLayer: {self.input_shape} -> {self.output_shape}'
-
-    @property
-    def weights_grad(self):
-        # return self._weights_grad
-        raise NotImplementedError
-
-    @property
-    def bias_grad(self):
-        # return self._biases_grad
-        raise NotImplementedError
-
-    def update(self, w_grad, b_grad):
-        # self.weights -= w_grad
-        # self.biases -= b_grad
-        raise NotImplementedError
-
-    @property
-    def weights_shape(self):
-        # return self.weights.shape
-        raise NotImplemented
-
-    @property
-    def bias_shape(self):
-        # return self.biases.shape
-        raise NotImplemented
+        return f'MeanPoolLayer: {self.input_shape} -> {self.output_shape} with pool size {self.pool_size}'
 
 
 class FlattenLayer(Layer):
-    def __init__(self, input_shape):
+    def __init__(self, input_shape: tuple):
         self.input_shape = input_shape
         self.output_shape = (input_shape[0], np.prod(input_shape[1:]))
 
@@ -329,18 +274,10 @@ class FlattenLayer(Layer):
     def __str__(self) -> str:
         return f'FlattenLayer: {self.input_shape} -> {self.output_shape}'
 
-    @property
-    def weights_shape(self):
-        return ()
-
-    @property
-    def bias_shape(self):
-        return ()
-
 
 class DenseLayer(Layer):
-    def __init__(self, input_size, output_size, activation='relu'):
-        self.input_size = input_size
+    def __init__(self, input_size: tuple, output_size: int, activation='relu'):
+        self.input_size = input_size[0]
         self.output_size = output_size
         self.activation = activation
 
