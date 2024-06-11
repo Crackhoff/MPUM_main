@@ -28,7 +28,7 @@ class Layer:
         pass
 
     @property
-    def weight_grad(self):
+    def weights_grad(self):
         return 0
 
     @property
@@ -59,7 +59,7 @@ class Layer:
             tanhX = np.tanh(X)
             return 1 - tanhX ** 2
         else:
-            return X
+            return np.ones(X.shape)
 
 
 class ConvLayer(Layer):
@@ -68,48 +68,54 @@ class ConvLayer(Layer):
         CNN - layer
         Based on: https://www.youtube.com/watch?v=Lakz2MoHy6o
         """
-
-        num_batches, height, width, channels = input_shape
-        self.batch_num = num_batches
+        channels, height, width, = input_shape
+        # self.batch_num = num_batches
         self.num_kernels = num_kernels  # K
         self.input_shape = input_shape  # (B, H, W, C)
         self.num_channels = channels  # C
-        self.output_shape = (
-        num_batches, num_kernels, height - kernel_size + 1, width - kernel_size + 1)  # (B, K, H-KS+1, W+KS+1)
+        self.output_shape = (num_kernels, height - kernel_size + 1, width - kernel_size + 1)  # (B, K, H-KS+1, W+KS+1)
 
         self.kernels_shape = (num_kernels, channels, kernel_size, kernel_size)  # (K, C, KS, KS)
         self.kernels = np.random.randn(*self.kernels_shape)  # (K, C, KS, KS)
-        self.biases = np.random.randn(*self.output_shape[1:])  # (K, H, W)
+        self.biases = np.random.randn(*self.output_shape)  # (K, H, W)
 
         self.kernels_grad = np.zeros(self.kernels_shape)
-        self.biases_grad = np.zeros(self.output_shape[1:])
+        self.biases_grad = np.zeros(self.output_shape)
 
         self.activation = activation
 
     def forward(self, X):
+        batches_num = X.shape[0]
         self.input = X  # (H, W, C)
-        self.output = np.ndarray(self.output_shape)
-        for b in range(self.batch_num):
+        self.output = np.ndarray((batches_num, *self.output_shape))
+        for b in range(batches_num):
             self.output[b] = np.copy(self.biases)
+            # print(self.num_kernels)
             for i in range(self.num_kernels):
                 for j in range(self.num_channels):
                     # print(self.input[:, :, j].shape, self.kernels[i].shape)
-                    self.output[b, i] += signal.correlate2d(self.input[b, :, :, j], self.kernels[i, j], mode='valid')
+                    self.output[b, i] += signal.correlate2d(self.input[b, j], self.kernels[i, j], mode='valid')
+
         self.derivative = self.activate_derivative(self.output)
         return self.activate(self.output)
 
     def backward(self, output_grad):
-        output_grad = output_grad * self.derivative
+        batches_num = self.input.shape[0]
+        output_grad = output_grad * np.mean(self.derivative, axis=0)
+        # print(output_grad.shape)
         # output_grad.shape: (K, H-KS+1, W+KS+1)
-        kernels_grad = np.zeros(self.kernels_shape)  # (K, C, KS, KS)
+        kernels_grad = np.zeros((batches_num, *self.kernels_shape))  # (K, C, KS, KS)
         input_grad = np.zeros(self.input_shape)  # (H, W, C)
 
         for i in range(self.num_kernels):
             for j in range(self.num_channels):
-                kernels_grad[i, j] += signal.correlate2d(self.input[:, :, j], output_grad[i], 'valid')
-                input_grad[:, :, j] += signal.convolve2d(output_grad[i], self.kernels[i, j], 'full')
+                for b in range(batches_num):
+                    # print("xd",self.input.shape, output_grad.shape)
+                    kernels_grad[b, i, j] = signal.correlate2d(self.input[b, j], output_grad[i], 'valid')
+                # print(signal.convolve2d(output_grad[i], self.kernels[i, j], 'full').shape, input_grad.shape)
+                input_grad[j] += signal.convolve2d(output_grad[i], self.kernels[i, j], 'full')
 
-        self.kernels_grad = kernels_grad
+        self.kernels_grad = np.mean(kernels_grad, axis=0)
         self.biases_grad = output_grad
         # self.kernels -= self.learning_rate * kernels_grad
         # self.biases -= self.learning_rate * output_grad
@@ -120,12 +126,12 @@ class ConvLayer(Layer):
         self.biases -= b_grad
 
     @property
-    def weights(self):
+    def weights_grad(self):
         return self.kernels_grad
 
     @property
-    def bias(self):
-        return self.bias_grad
+    def bias_grad(self):
+        return self.biases_grad
 
 
 class PoolLayer(Layer):
@@ -154,7 +160,7 @@ class MaxPoolLayer(Layer):
 
     def forward(self, X):
         # implement max pooling and save the indices of the max values
-        print(X.shape)
+        # print(X.shape)
         self.output = np.zeros(self.output_shape)
 
         (batch, x, y, channel) = X.shape
@@ -174,7 +180,7 @@ class MaxPoolLayer(Layer):
                         1, 0)
 
         self.indices = self._compress_indices()
-        print(self.indices.shape)
+        # print(self.indices.shape)
 
         return self.output
 
@@ -231,8 +237,7 @@ class FlattenLayer(Layer):
 
     def forward(self, X):
         self.input = X
-        self.output = X.reshape(X.shape[0], -1)
-
+        self.output = X.reshape(X.shape[0], -1, 1)
         return self.output
 
     def backward(self, output_grad):
@@ -240,39 +245,45 @@ class FlattenLayer(Layer):
 
 
 class DenseLayer(Layer):
-    def __init__(self, units, input_shape, activation='relu'):
-        self.units = units
-        self.input_shape = input_shape
+    def __init__(self, input_size, output_size, activation='relu'):
+        self.input_size = input_size
+        self.output_size = output_size
         self.activation = activation
 
-        self.weights = np.random.randn(input_shape[1], units) - 0.5
-        self.biases = np.random.randn(units) - 0.5
+        self.weights = np.random.randn(output_size, input_size)
+        self.biases = np.random.randn(output_size, 1)
+
+        self._weights_grad = None
+        self._biases_grad = None
 
     def forward(self, X):
         self.input = X
+        batches_num = X.shape[0]
 
-        self.output = np.dot(X, self.weights) + self.biases
+        self.output = np.ndarray((batches_num, self.output_size, 1))
+        for i in range(batches_num):
+            self.output[i] = np.dot(self.weights, self.input[i]) + self.biases
         self.derivative = self.activate_derivative(self.output)
         return self.activate(self.output)
 
     def backward(self, output_grad):
-        output_grad = output_grad * self.derivative
-        input_error = np.dot(output_grad, self.weights.T)
-        weights_error = np.dot(self.input.T, output_grad)
+        output_grad = output_grad * np.mean(self.derivative, axis=0)
+        input_grad = np.dot(self.weights.T, output_grad)
+        weights_grad = np.dot(output_grad, np.mean(self.input, axis=0).T)
+        self._weights_grad = weights_grad
+        self._biases_grad = output_grad
 
-        self.weights_grad = weights_error
-        self.biases_grad = output_grad
-
-        return input_error
+        return input_grad
 
     @property
     def weights_grad(self):
-        return self.weights_grad
+        return self._weights_grad
 
     @property
     def bias_grad(self):
-        return self.biases_grad
+        return self._biases_grad
 
     def update(self, w_grad, b_grad):
         self.weights -= w_grad
         self.biases -= b_grad
+        # print('update: ', w_grad, b_grad)

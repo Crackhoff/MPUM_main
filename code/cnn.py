@@ -1,60 +1,67 @@
 import numpy as np
+from optimizer import *
+from losses import *
 
 
-class CNN:
-    def __init__(self, learning_rate= 0.01, epochs=10, batch_size=32, verbose=1):
+class NuralNetwork:
+    def __init__(self, loss='mse'):
         self.layers = []
-        
-        self.next_layer = 0
-        
-        self.learning_rate = learning_rate
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.verbose = verbose
-        
+
+        if loss == 'binary_crossentropy':
+            self.loss = binary_cross_entropy
+            self.loss_d = binary_cross_entropy_d
+        else:
+            self.loss = mse
+            self.loss_d = mse_d
+
     def add(self, layer):
         self.layers.append(layer)
-        
-        layer.set_id(self.next_layer)
-        self.next_layer += 1
-        
-    def train(self, X, y):
-        self.batch_learning_rate = self.learning_rate / self.batch_size
-        
+
+        # layer.set_id(self.next_layer)
+        # self.next_layer += 1
+
+    def train(self, X, y, learning_rate=0.01, epochs=10, batch_size=1, verbose=True):
+        batch_learning_rate = learning_rate / batch_size
+
         self.error = []
-        
-        for epoch in range(self.epochs):
-            for i in range(0, X.shape[0], self.batch_size):
-                X_batch = X[i:i+self.batch_size]
-                y_batch = y[i:i+self.batch_size]
-                
-                self._forward(X_batch)
-                self._backward(y_batch)
-                
-            if self.verbose:
+        self.optimizer = SimpleOptimizer(self, learning_rate=learning_rate)  # Or batch_lr?
+
+        for epoch in range(epochs):
+            error = 0
+            for i in range(0, X.shape[0], batch_size):
+                X_batch = X[i:i + batch_size]
+                y_batch = y[i:i + batch_size]
+
+                y_pred = self._forward(X_batch)
+                error += self.loss(y_batch, y_pred)
+                print("loss", error)
+
+                grad = self.loss_d(y_batch, y_pred)
+                self._backward(grad)
+
+                self.optimizer.step()
+
+            error /= batch_size
+            self.error.append(error)
+
+            if verbose:
                 print("Epoch", epoch, "Error", self.error[-1])
-                
+
     def predict(self, X):
-        self._forward(X)
-        
-        return self.layers[-1].output
+        X = X.reshape(1, *X.shape)
+        return self._forward(X)[0]
 
     def evaluate(self, X, y):
-        
-        output = self.predict(X) 
+        output = self.predict(X)
         return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
-        
+
     def _forward(self, X):
-        self.layers[0].forward(X)
-        
-        for i in range(1, len(self.layers)):
-            self.layers[i].forward(self.layers[i-1].output)
-            
-    def _backward(self, y):
-        self.layers[-1].backward(y)
-        
-        for i in range(len(self.layers)-2, -1, -1):
-            self.layers[i].backward(self.layers[i+1].delta)
-            
-        self.error.append(np.mean(np.abs(self.layers[-1].delta)))
-        
+        for l in self.layers:
+            X = l.forward(X)
+        return X
+
+    def _backward(self, grad):
+        for l in reversed(self.layers):
+            grad = l.backward(grad)
+        return grad
+        # self.error.append(np.mean(np.abs(y)))
