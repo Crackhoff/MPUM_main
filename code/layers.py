@@ -132,6 +132,9 @@ class ConvLayer(Layer):
     @property
     def bias_grad(self):
         return self.biases_grad
+    
+    def __str__(self) -> str:
+        return f'ConvLayer: {self.input_shape} -> {self.output_shape}'
 
 
 class PoolLayer(Layer):
@@ -201,6 +204,9 @@ class MaxPoolLayer(Layer):
         output_grad = output_grad * self.indices
 
         return output_grad
+    
+    def __str__(self) -> str:
+        return f'MaxPoolLayer: {self.input_shape} -> {self.output_shape}'
 
 
 class MeanPoolLayer(Layer):
@@ -236,6 +242,9 @@ class MeanPoolLayer(Layer):
         output_grad = output_grad / (self.pool_size[0] * self.pool_size[1])
 
         return output_grad
+    
+    def __str__(self) -> str:
+        return f'MeanPoolLayer: {self.input_shape} -> {self.output_shape}'
 
 
 class FlattenLayer(Layer):
@@ -250,6 +259,9 @@ class FlattenLayer(Layer):
 
     def backward(self, output_grad):
         return output_grad.reshape(self.input_shape)
+    
+    def __str__(self) -> str:
+        return f'FlattenLayer: {self.input_shape} -> {self.output_shape}'
 
 
 class DenseLayer(Layer):
@@ -295,3 +307,6 @@ class DenseLayer(Layer):
         self.weights -= w_grad
         self.biases -= b_grad
         # print('update: ', w_grad, b_grad)
+        
+    def __str__(self) -> str:
+        return f'DenseLayer: {self.input_size} -> {self.output_size}'
