@@ -1,7 +1,7 @@
 import numpy as np
 from optimizer import *
 from losses import *
-
+from tqdm import tqdm
 
 class NeuralNetwork:
     def __init__(self, loss='mse'):
@@ -21,7 +21,7 @@ class NeuralNetwork:
         # layer.set_id(self.next_layer)
         # self.next_layer += 1
 
-    def train(self, X, y, learning_rate=0.01, epochs=10, batch_size=1, optimizer='adam', verbose=True):
+    def train(self, X, y, validation = True, learning_rate=0.01, epochs=10, batch_size=1, optimizer='adam', verbose=True):
         if optimizer == 'grad_descent':
             self.optimizer = SimpleOptimizer(self, learning_rate)
         else:
@@ -29,13 +29,25 @@ class NeuralNetwork:
 
         batch_learning_rate = learning_rate / batch_size
         self.error = []
+        
+        if validation:
+            print(X.shape, "preval")
+            # permute x and y
+            perm = np.random.permutation(X.shape[0])
+            X = X[perm]
+            y = y[perm]
+            self.X_val = X[:X.shape[0]//5]
+            self.y_val = y[:y.shape[0]//5]
+            X = X[X.shape[0]//5:]
+            y = y[y.shape[0]//5:]            
+            print(X.shape, "postval", self.X_val.shape)
 
         for epoch in range(epochs):
             error = 0
-            for i in range(0, X.shape[0], batch_size):
+            for i in tqdm(range(0, X.shape[0], batch_size)):
                 X_batch = X[i:i + batch_size]
                 y_batch = y[i:i + batch_size]
-
+                print(X.shape, "test    ")
                 y_pred = self._forward(X_batch)
                 error += self.loss(y_batch, y_pred)
 
@@ -44,11 +56,20 @@ class NeuralNetwork:
 
                 self.optimizer.step()
 
-            error /= batch_size
+            error /= (X.shape[0]//batch_size)
             self.error.append(error)
 
             if verbose:
                 print("Epoch", epoch, "Error", self.error[-1])
+                
+            if validation:
+                acc, _ = self.validate(self.X_val, self.y_val)
+                print("Validation accuracy", acc)
+                
+    def validate(self, X, y):
+        print(X.shape, "validate")
+        output = self._forward(X)[0]
+        return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
 
     def predict(self, X):
         X = X.reshape(1, *X.shape)
