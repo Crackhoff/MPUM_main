@@ -85,7 +85,7 @@ class ConvLayer(Layer):
         Based on: https://www.youtube.com/watch?v=Lakz2MoHy6o
         """
         channels, height, width, = input_shape
-        # self.batch_num = num_batches
+
         self.num_kernels = num_kernels  # K
         self.input_shape = input_shape  # (B, H, W, C)
         self.num_channels = channels  # C
@@ -117,26 +117,19 @@ class ConvLayer(Layer):
         return self.activate(self.output)
 
     def backward(self, output_grad):
-        # print(output_grad.shape)
         batches_num = self.input.shape[0]
         output_grad = output_grad * np.mean(self.derivative, axis=0)
-        # print(output_grad.shape)
-        # output_grad.shape: (K, H-KS+1, W+KS+1)
         kernels_grad = np.zeros((batches_num, *self.kernels_shape))  # (K, C, KS, KS)
         input_grad = np.zeros(self.input_shape)  # (H, W, C)
 
         for i in range(self.num_kernels):
             for j in range(self.num_channels):
                 for b in range(batches_num):
-                    # print("xd",self.input.shape, output_grad.shape)
                     kernels_grad[b, i, j] = signal.correlate2d(self.input[b, j], output_grad[i], 'valid')
-                # print(signal.convolve2d(output_grad[i], self.kernels[i, j], 'full').shape, input_grad.shape)
                 input_grad[j] += signal.convolve2d(output_grad[i], self.kernels[i, j], 'full')
 
         self.kernels_grad = np.mean(kernels_grad, axis=0)
         self.biases_grad = output_grad
-        # self.kernels -= self.learning_rate * kernels_grad
-        # self.biases -= self.learning_rate * output_grad
         return input_grad
 
     def update(self, w_grad, b_grad):
@@ -150,7 +143,7 @@ class ConvLayer(Layer):
     @property
     def bias_grad(self):
         return self.biases_grad
-    
+
     def __str__(self) -> str:
         return f'ConvLayer: {self.input_shape} -> {self.output_shape}'
 
@@ -161,7 +154,7 @@ class ConvLayer(Layer):
     @property
     def bias_shape(self):
         return self.output_shape
-    
+
     def __str__(self) -> str:
         return f'ConvLayer: {self.input_shape} -> {self.output_shape} with {self.num_kernels} kernels of size {self.kernels_shape[0]}x{self.kernels_shape[1]} \n Activation: {self.activation}'
 
@@ -175,19 +168,17 @@ class MaxPoolLayer(Layer):
             self.stride = stride
         self.input_shape = input_shape
         self.output_shape = (input_shape[0], (input_shape[1] - self.pool_size[0]) // self.stride[0] + 1,
-                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1) # (C, H, W)
+                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1)  # (C, H, W)
 
     def _compress_indices(self):
         return np.mean(self.indices, axis=0)
 
     def forward(self, X):
         # implement max pooling and save the indices of the max values
-        # print(X.shape)
         (batch, channel, x, y) = X.shape
         # add padding if needed
         self.output = np.zeros((batch, *self.output_shape))
 
-        
         self.indices = np.zeros(X.shape)
         for b in range(batch):
             for c in range(channel):
@@ -196,9 +187,10 @@ class MaxPoolLayer(Layer):
                         self.output[b, c, i // self.stride[0], j // self.stride[1]] = np.max(
                             X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]])
                         self.indices[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] = np.where(
-                            X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] == self.output[b, c, i // self.stride[0],
-                                                                                       j // self.stride[1],
-                                                                                       ].reshape(-1, 1, 1), 1, 0)
+                            X[b, c, i:i + self.pool_size[0], j:j + self.pool_size[1]] == self.output[
+                                b, c, i // self.stride[0],
+                                      j // self.stride[1],
+                            ].reshape(-1, 1, 1), 1, 0)
 
         self.indices = self._compress_indices()
 
@@ -212,20 +204,20 @@ class MaxPoolLayer(Layer):
 
         if output_grad.shape[1] != self.input_shape[1]:
             output_grad = np.pad(output_grad, ((0, 0), (0, self.input_shape[1] - output_grad.shape[1]), (0, 0)))
-        
+
         if output_grad.shape[2] != self.input_shape[2]:
             output_grad = np.pad(output_grad, ((0, 0), (0, 0), (0, self.input_shape[2] - output_grad.shape[2])))
-    
+
         output_grad = output_grad * self.indices
 
         return output_grad
-    
+
     def __str__(self) -> str:
         return f'MaxPoolLayer: {self.input_shape} -> {self.output_shape} with pool size {self.pool_size}'
 
 
 class MeanPoolLayer(Layer):
-    def __init__(self, input_shape:tuple, pool_size: tuple, stride=None):
+    def __init__(self, input_shape: tuple, pool_size: tuple, stride=None):
         self.pool_size = pool_size
         if stride is None:
             self.stride = pool_size
@@ -233,18 +225,18 @@ class MeanPoolLayer(Layer):
             self.stride = stride
         self.input_shape = input_shape
         self.output_shape = (input_shape[0], (input_shape[1] - self.pool_size[0]) // self.stride[0] + 1,
-                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1) # (C, H, W)
+                             (input_shape[2] - self.pool_size[1]) // self.stride[1] + 1)  # (C, H, W)
 
     def forward(self, X):
         # implement mean pooling
         self.output = np.zeros(self.output_shape)
-        
+
         batches_num = X.shape[0]
 
         reshaped_input = X.reshape(X.shape[0], X.shape[1], X.shape[2] // self.pool_size[0], self.pool_size[0],
                                    X.shape[3] // self.pool_size[1], self.pool_size[1])
         output = reshaped_input.mean(axis=(3, 5))
-        
+
         # self.indices = each neuron equal weight
         return output
 
@@ -258,12 +250,12 @@ class MeanPoolLayer(Layer):
 
         if output_grad.shape[1] != self.input_shape[1]:
             output_grad = np.pad(output_grad, ((0, 0), (0, self.input_shape[1] - output_grad.shape[1]), (0, 0)))
-        
+
         if output_grad.shape[2] != self.input_shape[2]:
             output_grad = np.pad(output_grad, ((0, 0), (0, 0), (0, self.input_shape[2] - output_grad.shape[2])))
-    
+
         return output_grad
-    
+
     def __str__(self) -> str:
         return f'MeanPoolLayer: {self.input_shape} -> {self.output_shape} with pool size {self.pool_size}'
 
@@ -280,7 +272,7 @@ class FlattenLayer(Layer):
 
     def backward(self, output_grad):
         return output_grad.reshape(self.input_shape)
-    
+
     def __str__(self) -> str:
         return f'FlattenLayer: {self.input_shape} -> {self.output_shape}'
 
