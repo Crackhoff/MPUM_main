@@ -31,7 +31,7 @@ class NeuralNetwork:
         self.error = []
         
         if validation:
-            print(X.shape, "preval")
+            # print(X.shape, "preval")
             # permute x and y
             perm = np.random.permutation(X.shape[0])
             X = X[perm]
@@ -40,14 +40,13 @@ class NeuralNetwork:
             self.y_val = y[:y.shape[0]//5]
             X = X[X.shape[0]//5:]
             y = y[y.shape[0]//5:]            
-            print(X.shape, "postval", self.X_val.shape)
+            # print(X.shape, "postval", self.X_val.shape)
 
         for epoch in range(epochs):
             error = 0
             for i in tqdm(range(0, X.shape[0], batch_size)):
                 X_batch = X[i:i + batch_size]
                 y_batch = y[i:i + batch_size]
-                print(X.shape, "test    ")
                 y_pred = self._forward(X_batch)
                 error += self.loss(y_batch, y_pred)
 
@@ -60,15 +59,14 @@ class NeuralNetwork:
             self.error.append(error)
 
             if verbose:
-                print("Epoch", epoch, "Error", self.error[-1])
+                print("Epoch:", epoch, "Error:", self.error[-1])
                 
-            if validation:
-                acc, _ = self.validate(self.X_val, self.y_val)
-                print("Validation accuracy", acc)
+                if validation:
+                    acc, _ = self.validate(self.X_val, self.y_val)
+                    print("Validation accuracy:", acc)
                 
     def validate(self, X, y):
-        print(X.shape, "validate")
-        output = self._forward(X)[0]
+        output = self._forward(X)
         return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
 
     def predict(self, X):
