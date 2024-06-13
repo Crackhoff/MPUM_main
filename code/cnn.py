@@ -3,10 +3,11 @@ from optimizer import *
 from losses import *
 from tqdm import tqdm
 
+
 class NeuralNetwork:
-    def __init__(self, loss='mse'):
+    def __init__(self, layers, loss='mse'):
         self.optimizer = None
-        self.layers = []
+        self.layers = layers
 
         if loss == 'binary_crossentropy':
             self.loss = binary_cross_entropy
@@ -15,32 +16,15 @@ class NeuralNetwork:
             self.loss = mse
             self.loss_d = mse_d
 
-    def add(self, layer):
-        self.layers.append(layer)
-
-        # layer.set_id(self.next_layer)
-        # self.next_layer += 1
-
-    def train(self, X, y, validation = True, learning_rate=0.01, epochs=10, batch_size=1, optimizer='adam', verbose=True):
+    def train(self, train_ds=(), valid_ds=(None, None), learning_rate=0.01, epochs=10, batch_size=1, optimizer='adam',
+              verbose=True):
         if optimizer == 'grad_descent':
             self.optimizer = SimpleOptimizer(self, learning_rate)
         else:
             self.optimizer = AdamOptimizer(self, learning_rate)
 
-        batch_learning_rate = learning_rate / batch_size
-        self.error = []
-        
-        if validation:
-            # print(X.shape, "preval")
-            # permute x and y
-            perm = np.random.permutation(X.shape[0])
-            X = X[perm]
-            y = y[perm]
-            self.X_val = X[:X.shape[0]//5]
-            self.y_val = y[:y.shape[0]//5]
-            X = X[X.shape[0]//5:]
-            y = y[y.shape[0]//5:]            
-            # print(X.shape, "postval", self.X_val.shape)
+        X, y = train_ds
+        X_valid, y_valid = valid_ds
 
         for epoch in range(epochs):
             error = 0
@@ -55,16 +39,15 @@ class NeuralNetwork:
 
                 self.optimizer.step()
 
-            error /= (X.shape[0]//batch_size)
-            self.error.append(error)
+            error /= (X.shape[0] // batch_size)
 
             if verbose:
-                print("Epoch:", epoch, "Error:", self.error[-1])
-                
-                if validation:
-                    acc, _ = self.validate(self.X_val, self.y_val)
+                print("Epoch:", epoch, "Error:", error)
+
+                if valid_ds is not (None, None):
+                    acc, _ = self.validate(X_valid, y_valid)
                     print("Validation accuracy:", acc)
-                
+
     def validate(self, X, y):
         output = self._forward(X)
         return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
@@ -80,7 +63,6 @@ class NeuralNetwork:
 
     def _forward(self, X):
         for l in self.layers:
-            # print(l, X.shape)
             X = l.forward(X)
         return X
 
@@ -88,4 +70,3 @@ class NeuralNetwork:
         for l in reversed(self.layers):
             grad = l.backward(grad)
         return grad
-        # self.error.append(np.mean(np.abs(y)))
