@@ -12,6 +12,9 @@ class NeuralNetwork:
         if loss == 'binary_crossentropy':
             self.loss = binary_cross_entropy
             self.loss_d = binary_cross_entropy_d
+        elif loss == 'crossentropy':
+            self.loss = cross_entropy
+            self.loss_d = cross_entropy_d
         else:
             self.loss = mse
             self.loss_d = mse_d
