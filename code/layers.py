@@ -240,11 +240,9 @@ class MeanPoolLayer(Layer):
         self.output = np.zeros(self.output_shape)
         
         batches_num = X.shape[0]
-
         reshaped_input = X.reshape(X.shape[0], X.shape[1], X.shape[2] // self.pool_size[0], self.pool_size[0],
                                    X.shape[3] // self.pool_size[1], self.pool_size[1])
         output = reshaped_input.mean(axis=(3, 5))
-        
         # self.indices = each neuron equal weight
         return output
 
@@ -338,3 +336,55 @@ class DenseLayer(Layer):
     @property
     def bias_shape(self):
         return self.biases.shape
+
+
+class BatchNormLayer(Layer):
+    def __init__(self, input_shape: tuple, epsilon=1e-5):
+        self.input_shape = input_shape
+        self.epsilon = epsilon
+        self.gamma = np.random.randn(input_shape[0], 1)
+        self.beta = np.random.randn(input_shape[0], 1)
+
+        self._gamma_grad = None
+        self._beta_grad = None
+
+    def forward(self, X):
+        self.input = X
+        self.mean = np.mean(X, axis=0)
+        self.variance = np.var(X, axis=0)
+        self.norm = (X - self.mean) / np.sqrt(self.variance + self.epsilon)
+        self.output = self.gamma * self.norm + self.beta
+        return self.output
+
+    def backward(self, output_grad):
+        batches_num = self.input.shape[0]
+        self._gamma_grad = np.sum(output_grad * self.norm, axis=0)
+        self._beta_grad = np.sum(output_grad, axis=0)
+        norm_grad = output_grad * self.gamma
+        variance_grad = np.sum(norm_grad * (self.input - self.mean), axis=0) * -0.5 * (self.variance + self.epsilon) ** -1.5
+        mean_grad = np.sum(norm_grad * -1 / np.sqrt(self.variance + self.epsilon), axis=0) + variance_grad * np.sum(-2 * (self.input - self.mean), axis=0) / batches_num
+        input_grad = norm_grad / np.sqrt(self.variance + self.epsilon) + variance_grad * 2 * (self.input - self.mean) / batches_num + mean_grad / batches_num
+        return input_grad
+
+    @property
+    def weights_grad(self):
+        return self._gamma_grad
+
+    @property
+    def bias_grad(self):
+        return self._beta_grad
+
+    def update(self, w_grad, b_grad):
+        self.gamma -= w_grad
+        self.beta -= b_grad
+
+    def __str__(self) -> str:
+        return f'BatchNormalizationLayer: {self.input_shape}'
+
+    @property
+    def weights_shape(self):
+        return self.gamma.shape
+
+    @property
+    def bias_shape(self):
+        return self.beta.shape

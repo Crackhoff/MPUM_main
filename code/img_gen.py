@@ -118,8 +118,8 @@ def create_sample_256(n):
         if img.shape[2] == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
         
-        # Waldo = random.choice(Waldos)
-        Waldo = Waldos[0]
+        Waldo = random.choice(Waldos)
+        # Waldo = Waldos[0]
         
         x = random.randint(0, 256 - Waldo.shape[1])
         y = random.randint(0, 256 - Waldo.shape[0])
