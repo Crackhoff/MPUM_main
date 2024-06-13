@@ -53,7 +53,7 @@ class NeuralNetwork:
         return np.mean(np.argmax(output, axis=1) == np.argmax(y, axis=1)), output
 
     def predict(self, X):
-        print(X.shape)
+
         X = X.reshape(1, *X.shape)
         return self._forward(X)[0]
 

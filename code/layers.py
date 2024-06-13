@@ -102,15 +102,12 @@ class ConvLayer(Layer):
 
     def forward(self, X):
         batches_num = X.shape[0]
-        # print("XXX",X.shape)
         self.input = X  # (H, W, C)
         self.output = np.ndarray((batches_num, *self.output_shape))
         for b in range(batches_num):
             self.output[b] = np.copy(self.biases)
-            # print(self.num_kernels)
             for i in range(self.num_kernels):
                 for j in range(self.num_channels):
-                    # print(self.input[:, :, j].shape, self.kernels[i].shape)
                     self.output[b, i] += signal.correlate2d(self.input[b, j], self.kernels[i, j], mode='valid')
 
         self.derivative = self.activate_derivative(self.output)
